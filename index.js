@@ -1,7 +1,7 @@
 import { Ed25519Keypair, JsonRpcProvider, RawSigner } from '@mysten/sui.js';
 import bip39 from 'bip39'
 import axios from 'axios'
-import HttpsProxyAgent from 'https-proxy-agent';
+import { SocksProxyAgent } from 'socks-proxy-agent';
 import fs from 'fs';
 import consoleStamp from 'console-stamp';
 
@@ -48,7 +48,7 @@ function parseFile(file) {
 
     array.forEach(proxy => {
         if (proxy.match(proxyRegex)) {
-            proxyLists.push({ "ip": `http://${proxy.split("@")[1]}@${proxy.split("@")[0]}`, "limited": false, "authFailed": false })
+            proxyLists.push({ "ip": `socks://${proxy.split("@")[1]}@${proxy.split("@")[0]}`, "limited": false, "authFailed": false })
         }
     })
 
@@ -61,7 +61,8 @@ function saveMnemonic(mnemonic) {
 
 async function checkProxy(proxyList) {
     let checkedProxy = await Promise.all(proxyList.map(async (proxy) => {
-        let axiosInstance = axios.create({ httpsAgent: HttpsProxyAgent(proxy.ip) })
+        const agent = new SocksProxyAgent(proxy.ip);
+        let axiosInstance = axios.create({ httpsAgent: agent })
         await axiosInstance.get("https://api64.ipify.org/?format=json")
             .catch(err => {
                 console.log(`Proxy ${proxy.ip.split("@")[1]} check error: ${err?.response?.statusText}`)
@@ -78,7 +79,8 @@ async function checkProxy(proxyList) {
 
 async function requestSuiFromFaucet(proxy, recipient) {
     console.log(`Requesting SUI from faucet with proxy ${proxy.ip.split("@")[1]}`);
-    const axiosInstance = axios.create({ httpsAgent: HttpsProxyAgent(proxy.ip) })
+    const agent = new SocksProxyAgent(proxy.ip);
+    const axiosInstance = axios.create({ httpsAgent: agent })
 
     let res = await axiosInstance("https://faucet.testnet.sui.io/gas", {
         headers: { 'Content-Type': 'application/json' },
